@@ -32,7 +32,8 @@ def _ydl(extra: dict | None = None) -> yt_dlp.YoutubeDL:
         "noprogress": True,
         "retries": 3,
         "socket_timeout": 30,
-        "extractor_args": {"youtube": {"player_client": ["default", "mweb"]}},
+        # several clients: if one is bot-checked from cloud IPs another may still work
+        "extractor_args": {"youtube": {"player_client": ["tv", "web_safari", "mweb", "default"]}},
     }
     if extra:
         opts.update(extra)
