@@ -70,9 +70,18 @@ jobs:
             https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx || true
 
       - name: Write YouTube token (if connected)
+        # Either one secret YOUTUBE_TOKEN_JSON (from auth_youtube.py on a computer),
+        # or three secrets made on a phone with Google's OAuth Playground:
+        # YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN.
         env:
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
         run: |
+          if [ -z "$YOUTUBE_TOKEN_JSON" ] && [ -n "$YT_REFRESH_TOKEN" ]; then
+            YOUTUBE_TOKEN_JSON=$(python -c 'import json,os;print(json.dumps({"client_id":os.environ["YT_CLIENT_ID"].strip(),"client_secret":os.environ["YT_CLIENT_SECRET"].strip(),"refresh_token":os.environ["YT_REFRESH_TOKEN"].strip(),"token_uri":"https://oauth2.googleapis.com/token"}))')
+          fi
           if [ -n "$YOUTUBE_TOKEN_JSON" ]; then
             printf '%s' "$YOUTUBE_TOKEN_JSON" > youtube_token.json
             echo "YouTube connected — uploads ON"

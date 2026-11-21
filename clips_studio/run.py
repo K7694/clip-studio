@@ -126,6 +126,10 @@ def main() -> int:
         print(json.dumps(md, indent=1, ensure_ascii=False))
         return 0
 
+    if not dry:
+        from . import upload
+        print(f"YouTube channel: {upload.channel_title()}")
+
     data = state.load()
     count = args.count or state.posts_today(data, config.WARMUP, config.POSTS_PER_DAY)
     print(f"Posts this run: {count}" + ("" if args.count else " (warm-up schedule)"))

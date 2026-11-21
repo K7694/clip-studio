@@ -17,10 +17,18 @@ def _client():
     from googleapiclient.discovery import build
 
     creds = Credentials.from_authorized_user_file(str(config.YOUTUBE_TOKEN_FILE))
-    if creds.expired and creds.refresh_token:
+    if not creds.valid and creds.refresh_token:
         creds.refresh(Request())
         config.YOUTUBE_TOKEN_FILE.write_text(creds.to_json())
     return build("youtube", "v3", credentials=creds, cache_discovery=False)
+
+
+def channel_title() -> str:
+    """Fails loudly if the login is broken, before any clip work is done."""
+    items = _client().channels().list(part="snippet", mine=True).execute().get("items", [])
+    if not items:
+        raise RuntimeError("This Google account has no YouTube channel yet — create one first.")
+    return items[0]["snippet"]["title"]
 
 
 def publish_times(n: int, taken: set[str] | None = None, now: datetime | None = None) -> list[datetime]:
