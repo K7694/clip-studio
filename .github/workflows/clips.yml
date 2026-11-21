@@ -103,6 +103,27 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      # Easy viewing on a phone: the latest clips also go to the "previews"
+      # branch (replaced every run, so the repo doesn't grow).
+      - name: Publish clips to the "previews" branch
+        if: always()
+        env:
+          TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ github.run_number }}
+        run: |
+          ls out/*.mp4 >/dev/null 2>&1 || { echo "no clips to publish"; exit 0; }
+          tmp=$(mktemp -d)
+          cp out/*.mp4 out/*.json "$tmp"/
+          cp out/SUMMARY.md "$tmp"/README.md 2>/dev/null || true
+          cd "$tmp"
+          git init -q -b previews
+          git add -A
+          git -c user.name="clips-studio bot" -c user.email="clips-studio-bot@users.noreply.github.com" \
+            commit -q -m "Preview clips from run $RUN"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${REPO}.git" previews
+          echo "Clips: https://github.com/${REPO}/tree/previews"
+
       - name: Save state
         if: always()
         run: |
