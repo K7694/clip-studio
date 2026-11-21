@@ -37,7 +37,8 @@ YT_MIN_VIDEO_SEC = 8 * 60         # skip shorts/trailers
 YT_MAX_VIDEO_SEC = 6 * 3600       # skip 12h marathons (audio download too big)
 
 # ── Clip shape ─────────────────────────────────────────────────────────
-CLIP_MIN_SEC = 18
+CLIP_MIN_SEC = 18                 # for clips cut from long streams
+TWITCH_MIN_SEC = 10               # viewer-made twitch clips can be short and still great
 CLIP_MAX_SEC = 55                 # Shorts allow 3 min, but < 60s performs best
 SKIP_EDGES_SEC = 4 * 60           # ignore stream intros/outros when hunting peaks
 OUT_W, OUT_H = 1080, 1920

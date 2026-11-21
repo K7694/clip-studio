@@ -50,6 +50,8 @@ def twitch_moments(streamer: dict, used: dict) -> list[Moment]:
         cid = f"twitch:{e.get('id')}"
         if not e.get("id") or cid in used:
             continue
+        if e.get("duration") and e["duration"] < config.TWITCH_MIN_SEC:
+            continue
         clip_url = e.get("url") or f"https://clips.twitch.tv/{e['id']}"
         out.append(Moment(streamer, cid, clip_url, clip_url, e.get("title") or "", whole=True,
                           meta={"views": e.get("view_count")}))

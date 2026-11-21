@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import os
 import shutil
 import time
@@ -19,7 +20,7 @@ from . import captions, config, highlights, reframe, render, sources, state, tit
 
 
 def make_clip(m: sources.Moment, workdir: Path, outdir: Path, idx: int) -> dict:
-    stem = workdir / f"src_{idx}"
+    stem = workdir / ("src_" + re.sub(r"\W+", "_", m.media_id))
     print(f"   downloading {m.page_url} " + ("" if m.whole else f"[{m.start:.0f}s-{m.end:.0f}s]"))
     src = m.meta.get("local_file") or sources.download_moment(m, stem)
     return build_clip(Path(src), m.streamer, m.whole, m.meta, m.source_title, m.credit_url, outdir, idx)
@@ -36,7 +37,7 @@ def build_clip(src: Path, streamer: dict, whole: bool, meta: dict, source_title:
         start, end = 0.0, min(dur, config.CLIP_MAX_SEC)
     else:
         start, end = highlights.refine_bounds(tr["segments"], meta["local_start"], meta["local_end"], dur)
-    if end - start < config.CLIP_MIN_SEC:
+    if end - start < (config.TWITCH_MIN_SEC if whole else config.CLIP_MIN_SEC):
         raise ValueError(f"clip too short ({end - start:.1f}s)")
 
     print("   analysing layout")
@@ -79,7 +80,7 @@ def collect(data: dict, count: int, only: list[str], workdir: Path, outdir: Path
         if not moments:
             print("   ✗ no new moments")
             continue
-        for m in moments[:2]:                      # second chance if the first fails
+        for m in moments[:4]:                      # more chances if one fails
             try:
                 md = make_clip(m, workdir, outdir, len(made) + 1)
                 print(f"   ✓ {md['title']}")

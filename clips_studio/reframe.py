@@ -16,6 +16,7 @@ from . import config
 
 YUNET = config.ROOT / "models" / "face_detection_yunet_2023mar.onnx"
 CAM_H = 640                       # facecam panel height in the output (rest is gameplay)
+BOTTOM_CUT = 0.10                 # ignore the bottom 10% of the stream (burned-in subs, alerts)
 
 
 class FaceDetector:
@@ -127,12 +128,13 @@ def filter_graph(layout: dict, W: int, H: int) -> tuple[str, int]:
     if layout["layout"] == "facecam":
         x, y, w, h = layout["cam"]
         gh = OH - CAM_H
-        gw = int(H * OW / gh) // 2 * 2                 # gameplay crop with the panel's aspect
+        Hc = int(H * (1 - BOTTOM_CUT)) // 2 * 2
+        gw = int(Hc * OW / gh) // 2 * 2                # gameplay crop with the panel's aspect
         gw = min(gw, W)
         gx = (W - gw) // 2
         g = (f"[0:v]split=2[a][b];"
              f"[a]crop={w}:{h}:{x}:{y},scale={OW}:{CAM_H}:flags=lanczos,setsar=1[cam];"
-             f"[b]crop={gw}:{H}:{gx}:0,scale={OW}:{gh}:flags=lanczos,setsar=1[game];"
+             f"[b]crop={gw}:{Hc}:{gx}:0,scale={OW}:{gh}:flags=lanczos,setsar=1[game];"
              f"[cam][game]vstack=inputs=2,fps=30[v]")
         return g, CAM_H + 150
     if layout["layout"] == "track":
@@ -143,10 +145,11 @@ def filter_graph(layout: dict, W: int, H: int) -> tuple[str, int]:
     # fill
     fw = int(W * 0.72) // 2 * 2
     fx = (W - fw) // 2
-    fh = int(round(H * OW / fw / 2)) * 2
+    Hc = int(H * (1 - BOTTOM_CUT)) // 2 * 2
+    fh = int(round(Hc * OW / fw / 2)) * 2
     g = (f"[0:v]split=2[a][b];"
          f"[a]scale={OW}:{OH}:force_original_aspect_ratio=increase,crop={OW}:{OH},"
          f"boxblur=24:2,eq=brightness=-0.12[bg];"
-         f"[b]crop={fw}:{H}:{fx}:0,scale={OW}:{fh}:flags=lanczos,setsar=1[fg];"
+         f"[b]crop={fw}:{Hc}:{fx}:0,scale={OW}:{fh}:flags=lanczos,setsar=1[fg];"
          f"[bg][fg]overlay=0:(H-h)/2,setsar=1,fps=30[v]")
     return g, (OH + fh) // 2 + 170

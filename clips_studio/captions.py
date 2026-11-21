@@ -79,10 +79,12 @@ def write_ass(transcript: dict, clip_start: float, clip_end: float, y: int, path
     subs.styles["Default"] = style
 
     count = 0
-    for chunk in _chunks(words):
+    chunks = _chunks(words)
+    for ci, chunk in enumerate(chunks):
+        nxt = chunks[ci + 1][0]["start"] if ci + 1 < len(chunks) else dur
         for i, w in enumerate(chunk):
             a = max(0.0, w["start"])
-            b = chunk[i + 1]["start"] if i + 1 < len(chunk) else w["end"] + 0.25
+            b = chunk[i + 1]["start"] if i + 1 < len(chunk) else min(w["end"] + 0.25, nxt)
             b = min(max(b, a + 0.08), dur)
             if b <= a:
                 continue
