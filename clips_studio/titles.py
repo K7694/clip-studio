@@ -62,7 +62,8 @@ def make(streamer: dict, source_title: str, kind: str, transcript: str, credit_u
     title = _gemini(name, source_title, transcript)
     if not title:
         clean = _clean_title(source_title)
-        if kind == "twitch" and 4 <= len(clean) <= 60:
+        real_words = [w for w in re.findall(r"[A-Za-z\u0900-\u097F]+", clean) if len(w) >= 3]
+        if kind == "twitch" and 8 <= len(clean) <= 60 and len(real_words) >= 2:
             title = f"{name}: {clean}"                       # viewer-written clip titles are good hooks
         else:
             title = f"{name} {random.choice(HOOKS)}"

@@ -32,7 +32,7 @@ POSTS_PER_DAY = int(os.getenv("POSTS_PER_DAY", "5"))
 # Warm-up for a brand-new channel: (days since first upload, posts/day).
 # Ramps 2 -> 3 -> 4 -> POSTS_PER_DAY so the channel never looks like a spam burst.
 WARMUP = [(7, 2), (14, 3), (21, 4)]
-CLIP_RANGE = "7d"                 # twitch clip window: 24hr | 7d | 30d
+CLIP_RANGES = ["7d", "30d"]       # twitch clip windows, tried in order (quiet streamers fall back to 30d)
 YT_RECENT_VIDEOS = 4              # how many recent uploads to consider per YouTube source
 YT_MIN_VIDEO_SEC = 8 * 60         # skip shorts/trailers
 YT_MAX_VIDEO_SEC = 6 * 3600       # skip 12h marathons (audio download too big)

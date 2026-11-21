@@ -42,9 +42,17 @@ def _ydl(extra: dict | None = None) -> yt_dlp.YoutubeDL:
 
 # ── Twitch: top viewer-made clips are already highlights ────────────────
 def twitch_moments(streamer: dict, used: dict) -> list[Moment]:
-    url = f"https://www.twitch.tv/{streamer['login']}/clips?filter=clips&range={config.CLIP_RANGE}"
-    with _ydl({"extract_flat": "in_playlist", "playlistend": 25}) as ydl:
-        info = ydl.extract_info(url, download=False)
+    for rng in config.CLIP_RANGES:
+        url = f"https://www.twitch.tv/{streamer['login']}/clips?filter=clips&range={rng}"
+        with _ydl({"extract_flat": "in_playlist", "playlistend": 25}) as ydl:
+            info = ydl.extract_info(url, download=False)
+        out = _twitch_entries(streamer, info, used)
+        if out:
+            return out
+    return []
+
+
+def _twitch_entries(streamer: dict, info: dict, used: dict) -> list[Moment]:
     out = []
     for e in info.get("entries") or []:
         cid = f"twitch:{e.get('id')}"
