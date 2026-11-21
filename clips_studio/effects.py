@@ -36,7 +36,7 @@ def _plain(text: str) -> str:
 
 
 def hook_text(title: str, streamer: str) -> str:
-    t = _plain(title)
+    t = _plain(title).split("|")[0].strip()
     if t.lower().startswith(streamer.lower() + ":"):
         t = t[len(streamer) + 1:].strip()
         if streamer.split()[0].lower() not in t.lower() and len(t) < 28:
