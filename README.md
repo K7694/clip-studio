@@ -11,8 +11,8 @@ pick 5 streamers (rotating) → find the hype moment → download only that part
 Separate from `you-shorts` — different repo, different channel, different Google Cloud project.
 
 ## How moments are found
-* **Twitch** (xQc, Kai Cenat, summit1g, Buddha): the most-viewed viewer-made clips of the last 7 days — already the best moments.
-* **YouTube** (IShowSpeed, CarryMinati, Techno Gamerz, Total Gaming, GamerFleet, Mortal): the audio of recent streams is scanned for the biggest sudden loudness spikes (screams, laughs, reactions). Only ~1 minute of video is downloaded.
+* **Twitch** (xQc, Kai Cenat, summit1g, Buddha, CaseOh, Jynxzi, shroud, Tarik, Asmongold, Stable Ronaldo): the most-viewed viewer-made clips of the last 7 days — already the best moments.
+* **YouTube** (supported, currently off — YouTube blocks cloud downloads without cookies): the audio of recent streams is scanned for the biggest sudden loudness spikes (screams, laughs, reactions). Only ~1 minute of video is downloaded.
 * Cuts snap to sentence boundaries; nothing is ever posted twice (`state/used.json`).
 
 New channel warm-up: 2 posts/day in week 1, 3 in week 2, 4 in week 3, then 5 (automatic).

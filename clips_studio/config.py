@@ -13,18 +13,19 @@ STATE_FILE = ROOT / "state" / "used.json"
 # Rotation picks the least-recently-used sources each day. Add/remove freely;
 # a source that fails (renamed, offline, blocked) is skipped for that day.
 STREAMERS = [
-    # ── International ──
-    {"name": "IShowSpeed",    "kind": "youtube", "url": "https://www.youtube.com/@IShowSpeed/streams", "region": "intl"},
-    {"name": "xQc",           "kind": "twitch",  "login": "xqc",       "region": "intl"},
-    {"name": "Kai Cenat",     "kind": "twitch",  "login": "kaicenat",  "region": "intl"},
-    {"name": "summit1g",      "kind": "twitch",  "login": "summit1g",  "region": "intl"},
-    {"name": "Buddha",        "kind": "twitch",  "login": "buddha",    "region": "intl"},
-    # ── India ──
-    {"name": "CarryMinati",   "kind": "youtube", "url": "https://www.youtube.com/@CarryisLive/streams",          "region": "india"},
-    {"name": "Techno Gamerz", "kind": "youtube", "url": "https://www.youtube.com/@TechnoGamerzOfficial/videos",  "region": "india"},
-    {"name": "Total Gaming",  "kind": "youtube", "url": "https://www.youtube.com/@TotalGaming093/streams",       "region": "india"},
-    {"name": "GamerFleet",    "kind": "youtube", "url": "https://www.youtube.com/@GamerFleet/streams",           "region": "india"},
-    {"name": "Mortal",        "kind": "youtube", "url": "https://www.youtube.com/@MortaL/streams",               "region": "india"},
+    # Twitch only for now: YouTube blocks downloads from GitHub's cloud servers.
+    # (YouTube sources still work in code — add {"kind": "youtube", "url": ...} entries
+    #  back once cookies are set up.)
+    {"name": "xQc",          "kind": "twitch", "login": "xqc",           "region": "intl"},
+    {"name": "Kai Cenat",    "kind": "twitch", "login": "kaicenat",      "region": "intl"},
+    {"name": "summit1g",     "kind": "twitch", "login": "summit1g",      "region": "intl"},
+    {"name": "Buddha",       "kind": "twitch", "login": "buddha",        "region": "intl"},
+    {"name": "CaseOh",       "kind": "twitch", "login": "caseoh_",       "region": "intl"},
+    {"name": "Jynxzi",       "kind": "twitch", "login": "jynxzi",        "region": "intl"},
+    {"name": "shroud",       "kind": "twitch", "login": "shroud",        "region": "intl"},
+    {"name": "Tarik",        "kind": "twitch", "login": "tarik",         "region": "intl"},
+    {"name": "Asmongold",    "kind": "twitch", "login": "zackrawrr",     "region": "intl"},
+    {"name": "Stable Ronaldo", "kind": "twitch", "login": "stableronaldo", "region": "intl"},
 ]
 
 POSTS_PER_DAY = int(os.getenv("POSTS_PER_DAY", "5"))
