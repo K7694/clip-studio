@@ -1,0 +1,9 @@
+# clips-studio — all free / open source
+yt-dlp[default]            # downloads (kept current with pip -U in the workflow)
+faster-whisper>=1.1        # speech -> word-timed captions (runs on CPU)
+opencv-python-headless==4.10.0.84   # face detection (YuNet, Haar fallback)
+pysubs2>=1.7               # styled ASS captions
+numpy>=1.26
+google-api-python-client>=2.90
+google-auth>=2.20
+google-auth-oauthlib>=1.0
