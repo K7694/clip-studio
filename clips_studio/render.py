@@ -7,15 +7,17 @@ from pathlib import Path
 from . import config
 
 
-def render(src: Path, start: float, end: float, graph: str, ass: Path | None, out: Path) -> Path:
+def render(src: Path, start: float, end: float, graph: str, ass: Path | None, out: Path,
+           post: str | None = None) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
-    vchain = graph
+    vchain, vout = graph, "[v]"
+    if post:
+        vchain += f";{vout}{post}[vp]"
+        vout = "[vp]"
     if ass is not None:
         a = str(ass).replace("\\", "/").replace(":", r"\:").replace("'", r"\'")
-        vchain += f";[v]ass='{a}'[vo]"
+        vchain += f";{vout}ass='{a}'[vo]"
         vout = "[vo]"
-    else:
-        vout = "[v]"
     cmd = [
         "ffmpeg", "-y", "-v", "error",
         "-ss", f"{start:.3f}", "-t", f"{end - start:.3f}", "-i", str(src),

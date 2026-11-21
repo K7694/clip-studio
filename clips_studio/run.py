@@ -16,7 +16,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import captions, config, highlights, reframe, render, sources, state, titles
+from . import captions, config, effects, highlights, reframe, render, sources, state, titles
 
 
 def make_clip(m: sources.Moment, workdir: Path, outdir: Path, idx: int) -> dict:
@@ -45,15 +45,20 @@ def build_clip(src: Path, streamer: dict, whole: bool, meta: dict, source_title:
     graph, cap_y = reframe.filter_graph(layout, W, H)
     print(f"   layout={layout['layout']} lang={tr['language']} len={end - start:.1f}s")
 
-    slug = f"{idx:02d}_{''.join(c for c in streamer['name'] if c.isalnum())}"
-    ass = outdir / f"{slug}.ass"
-    n_caps = captions.write_ass(tr, start, end, cap_y, ass)
-    out = render.render(src, start, end, graph, ass if n_caps else None, outdir / f"{slug}.mp4")
-    if n_caps:
-        ass.unlink(missing_ok=True)
-
     spoken = " ".join(s["text"] for s in tr["segments"] if s["end"] > start and s["start"] < end)
     md = titles.make(streamer, source_title, streamer["kind"], spoken, credit_url)
+
+    slug = f"{idx:02d}_{''.join(c for c in streamer['name'] if c.isalnum())}"
+    ass = outdir / f"{slug}.ass"
+    dur_clip = end - start
+    captions.write_ass(tr, start, end, cap_y, ass)
+    hook = effects.hook_text(md["title"], streamer["name"])
+    effects.add_overlays(ass, dur_clip, streamer["name"], hook)
+    punches = effects.punch_points(src, start, end)
+    post = effects.post_filter(punches, dur_clip)
+    out = render.render(src, start, end, graph, ass, outdir / f"{slug}.mp4", post=post)
+    ass.unlink(missing_ok=True)
+    md["edits"] = {"hook": hook.replace(r"\N", " "), "zooms_at": punches}
     md.update({"streamer": streamer["name"], "layout": layout["layout"], "language": tr["language"],
                "seconds": round(end - start, 1), "transcript": spoken, "file": out.name})
     (outdir / f"{slug}.json").write_text(json.dumps(md, indent=1, ensure_ascii=False))
