@@ -79,6 +79,12 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
         run: |
+          # shape checks (never prints the values) so a wrong paste is obvious
+          if [ -n "$YT_REFRESH_TOKEN" ]; then
+            case "$(echo "$YT_CLIENT_ID" | xargs)" in *.apps.googleusercontent.com) echo "YT_CLIENT_ID: looks right";; *) echo "::error::YT_CLIENT_ID does not end with .apps.googleusercontent.com — wrong value pasted";; esac
+            case "$(echo "$YT_CLIENT_SECRET" | xargs)" in GOCSPX-*) echo "YT_CLIENT_SECRET: looks right";; *) echo "::error::YT_CLIENT_SECRET does not start with GOCSPX- — wrong value pasted";; esac
+            case "$(echo "$YT_REFRESH_TOKEN" | xargs)" in 1//*) echo "YT_REFRESH_TOKEN: looks right";; *) echo "::warning::YT_REFRESH_TOKEN does not start with 1// — check it";; esac
+          fi
           if [ -z "$YOUTUBE_TOKEN_JSON" ] && [ -n "$YT_REFRESH_TOKEN" ]; then
             YOUTUBE_TOKEN_JSON=$(python -c 'import json,os;print(json.dumps({"client_id":os.environ["YT_CLIENT_ID"].strip(),"client_secret":os.environ["YT_CLIENT_SECRET"].strip(),"refresh_token":os.environ["YT_REFRESH_TOKEN"].strip(),"token_uri":"https://oauth2.googleapis.com/token"}))')
           fi
