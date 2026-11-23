@@ -28,7 +28,10 @@ def channel_title() -> str:
     items = _client().channels().list(part="snippet", mine=True).execute().get("items", [])
     if not items:
         raise RuntimeError("This Google account has no YouTube channel yet — create one first.")
-    return items[0]["snippet"]["title"]
+    ch = items[0]
+    handle = ch["snippet"].get("customUrl")
+    link = f"https://www.youtube.com/{handle}" if handle else f"https://www.youtube.com/channel/{ch['id']}"
+    return f"{ch['snippet']['title']} — {link}"
 
 
 def publish_times(n: int, taken: set[str] | None = None, now: datetime | None = None) -> list[datetime]:
