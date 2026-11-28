@@ -5,11 +5,12 @@ A clip that shows nudity or near-nudity can get a new channel age-restricted,
 demonetised or struck, so every candidate is scanned before it is used.
 
 Uses NudeNet (open source, model bundled in the pip package, runs on CPU) on one
-frame per second — the whole frame plus its left and right halves, so small
-overlays and side-by-side layouts are caught too.
+frame every half second — the whole frame, its centre, and its left/right halves, so
+small overlays and side-by-side layouts are caught too. Clip titles are checked as well.
 """
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -30,28 +31,44 @@ def _detector():
 
 
 def _frame_verdict(dets: list[dict]) -> str | None:
-    classes = {}
+    """Thresholds are deliberately low: game/CGI nudity scores much lower than real photos,
+    and a false alarm only costs us one candidate clip, while a miss can cost the channel."""
+    c = {}
     for d in dets:
-        classes[d["class"]] = max(classes.get(d["class"], 0.0), d["score"])
-    for c in EXPOSED:
-        if classes.get(c, 0) >= 0.35:
-            return f"nudity ({c.lower()})"
-    sug = max((classes.get(c, 0) for c in SUGGESTIVE), default=0)
-    skin = max((classes.get(c, 0) for c in SKIN), default=0)
-    if sug >= 0.55 and skin >= 0.25:
+        c[d["class"]] = max(c.get(d["class"], 0.0), d["score"])
+    for k in ("FEMALE_GENITALIA_EXPOSED", "MALE_GENITALIA_EXPOSED", "ANUS_EXPOSED"):
+        if c.get(k, 0) >= 0.22:
+            return f"nudity ({k.lower()})"
+    for k in ("FEMALE_BREAST_EXPOSED", "BUTTOCKS_EXPOSED"):
+        if c.get(k, 0) >= 0.30:
+            return f"nudity ({k.lower()})"
+    belly, armpit = c.get("BELLY_EXPOSED", 0), c.get("ARMPITS_EXPOSED", 0)
+    if belly >= 0.5 and (c.get("MALE_BREAST_EXPOSED", 0) >= 0.45 or armpit >= 0.3):
+        return "undressed person (bare torso)"
+    sug = max((c.get(k, 0) for k in SUGGESTIVE), default=0)
+    skin = max(belly, armpit, c.get("FEET_EXPOSED", 0))
+    if sug >= 0.5 and skin >= 0.25:
         return "suggestive (revealing clothing)"
-    if sug >= 0.75:
+    if sug >= 0.7:
         return "suggestive"
     return None
 
 
-def check(path: Path, start: float = 0.0, end: float | None = None, step: float = 1.0) -> str | None:
-    """None if the clip looks safe, else a short reason. Fails open only if the model can't load."""
+BAD_TITLE = re.compile(r"(nsfw|18\+|\bnude|naked|nudity|boob|tits|thicc|lewd|onlyfans|\bsexy|\bsex\b|strip(per|club)|"
+                       r"porn|hentai|\bdick\b|\bcock\b|pussy|\bbutt\b|twerk|bikini|lingerie)", re.I)
+
+
+def title_check(title: str) -> str | None:
+    m = BAD_TITLE.search(title or "")
+    return f"unsafe title ('{m.group(0)}')" if m else None
+
+
+def check(path: Path, start: float = 0.0, end: float | None = None, step: float = 0.5) -> str | None:
+    """None if the clip looks safe, else a short reason. Fails closed: no check, no post."""
     try:
         det = _detector()
     except Exception as e:  # noqa: BLE001
-        print(f"   (safety check unavailable: {e})")
-        return None
+        return f"safety check unavailable ({str(e)[:60]})"
     cap = cv2.VideoCapture(str(path))
     if end is None:
         end = (cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0) / (cap.get(cv2.CAP_PROP_FPS) or 30)
@@ -61,12 +78,14 @@ def check(path: Path, start: float = 0.0, end: float | None = None, step: float 
         ok, frame = cap.read()
         if ok:
             h, w = frame.shape[:2]
-            views = [frame] + ([frame[:, : w // 2], frame[:, w // 2:]] if w > h else [])
+            views = [frame, frame[h // 5: h - h // 5, w // 5: w - w // 5]]          # whole + centre
+            if w > h:
+                views += [frame[:, : w // 2], frame[:, w // 2:]]                     # left / right halves
             for v in views:
                 why = _frame_verdict(det.detect(v))
                 if why:
-                    flagged.append((round(t, 1), why))
-                    break
+                    cap.release()
+                    return f"{why} at {round(t, 1)}s"
         t += step
     cap.release()
     if flagged:

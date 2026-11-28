@@ -12,6 +12,8 @@ import random
 import re
 import urllib.request
 
+from . import words
+
 GAMES = {
     "gta": "GTA", "grand theft auto": "GTA", "rp": "GTA RP", "nopixel": "GTA RP", "soulcity": "GTA RP",
     "minecraft": "Minecraft", "bgmi": "BGMI", "pubg": "PUBG", "free fire": "Free Fire",
@@ -76,7 +78,7 @@ def _gemini(streamer: str, source_title: str, transcript: str, style: str) -> di
 
 
 def _viewer_title(source_title: str) -> str | None:
-    clean = _clean_title(source_title)
+    clean = words.clean_title(_clean_title(source_title))
     real_words = [w for w in re.findall(r"[A-Za-z\u0900-\u097F]+", clean) if len(w) >= 3]
     if 8 <= len(clean) <= 60 and len(real_words) >= 2:
         return clean
@@ -111,7 +113,8 @@ def make(streamer: dict, source_title: str, kind: str, transcript: str, credit_u
     else:
         hook, title, style = _template(streamer, source_title, kind, style, quote)
         packaging = "template"
-    title = title[:90].rstrip()
+    hook = words.mask(hook)
+    title = words.clean_title(title)[:90].rstrip()
     if "#shorts" not in title.lower() and len(title) <= 90:
         title += " #shorts"
 

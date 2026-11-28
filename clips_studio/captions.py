@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pysubs2
 
-from . import config
+from . import config, words as wordfilter
 
 YELLOW = pysubs2.Color(255, 221, 0)
 WHITE = pysubs2.Color(255, 255, 255)
@@ -53,7 +53,7 @@ def _chunks(words: list[dict]) -> list[list[dict]]:
 
 def _clean(word: str) -> str:
     word = re.sub(r"[.,।]+$", "", word)
-    return word.upper()
+    return wordfilter.mask(word).upper()
 
 
 def write_ass(transcript: dict, segments: list[tuple[float, float, float]], y: int, path: Path) -> int:

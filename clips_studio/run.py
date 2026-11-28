@@ -47,7 +47,7 @@ def build_clip(src: Path, streamer: dict, whole: bool, meta: dict, source_title:
         start, end = highlights.refine_bounds(tr["segments"], meta["local_start"], meta["local_end"], dur)
     if end - start < (config.TWITCH_MIN_SEC if whole else config.CLIP_MIN_SEC):
         raise ValueError(f"clip too short ({end - start:.1f}s)")
-    unsafe = safety.check(src, start, end)
+    unsafe = safety.title_check(source_title) or safety.check(src, start, end)
     if unsafe:
         raise ValueError(f"skipped for safety: {unsafe}")
 

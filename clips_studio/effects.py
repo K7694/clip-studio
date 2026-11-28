@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 import pysubs2
 
-from . import config, highlights
+from . import config, highlights, words
 
 YELLOW = pysubs2.Color(255, 221, 0)
 WHITE = pysubs2.Color(255, 255, 255)
@@ -84,18 +84,20 @@ def pick_quote(segments: list[dict], start: float, end: float, around: float | N
         if s["end"] <= start or s["start"] >= end:
             continue
         raw = s["text"].strip()
-        words = re.sub(r"[^\w\s'?!]", " ", raw).split()
-        while words and words[0].lower() in FILLER:
-            words = words[1:]
-        while words and words[-1].lower().strip("?!") in FILLER:
-            words = words[:-1]
-        if not 2 <= len(words) <= 7:
+        if words.has_slur(raw):
             continue
-        text = " ".join(words)
+        ws = re.sub(r"[^\w\s'?!]", " ", raw).split()
+        while ws and ws[0].lower() in FILLER:
+            ws = ws[1:]
+        while ws and ws[-1].lower().strip("?!") in FILLER:
+            ws = ws[:-1]
+        if not 2 <= len(ws) <= 7:
+            continue
+        text = " ".join(ws)
         sc = 0.0
         sc += 2.0 if re.search(r"[!?]", raw) else 0
         sc += 1.5 if HYPE.search(text) else 0
-        sc -= abs(len(words) - 4) * 0.3
+        sc -= abs(len(ws) - 4) * 0.3
         if around is not None:
             sc -= abs((s["start"] + s["end"]) / 2 - (start + around)) / 6
         if sc > best_score:
