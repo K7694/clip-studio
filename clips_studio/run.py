@@ -21,7 +21,7 @@ import random
 
 import numpy as np
 
-from . import captions, config, effects, highlights, learn, reframe, render, sources, state, titles
+from . import captions, config, effects, highlights, learn, reframe, render, safety, sources, state, titles
 
 
 def make_clip(m: sources.Moment, workdir: Path, outdir: Path, idx: int, choices: dict) -> dict:
@@ -47,6 +47,9 @@ def build_clip(src: Path, streamer: dict, whole: bool, meta: dict, source_title:
         start, end = highlights.refine_bounds(tr["segments"], meta["local_start"], meta["local_end"], dur)
     if end - start < (config.TWITCH_MIN_SEC if whole else config.CLIP_MIN_SEC):
         raise ValueError(f"clip too short ({end - start:.1f}s)")
+    unsafe = safety.check(src, start, end)
+    if unsafe:
+        raise ValueError(f"skipped for safety: {unsafe}")
 
     # flash-forward: open on the loudest reaction for 1.6 s, then play the clip from the start
     peak = effects.best_moment(src, start, end)

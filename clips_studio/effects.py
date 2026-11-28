@@ -68,21 +68,36 @@ def best_moment(src: Path, start: float, end: float) -> float | None:
     return round(i * hop, 2)
 
 
+FILLER = {"and", "but", "so", "the", "a", "an", "to", "of", "it", "that", "like", "um", "uh", "i", "is", "was"}
+HYPE = re.compile(r"\b(no way|what|bro|dude|oh my god|omg|let'?s go|crazy|insane|holy|wait|yo|why|how|stop|run|"
+                  r"help|no+|yes+|bruh|chat|nah|dead|wtf|lmao|actually|never|what the)\b", re.I)
+
+
 def pick_quote(segments: list[dict], start: float, end: float, around: float | None) -> str | None:
-    """Short, punchy line the streamer says (near the big moment if we know it)."""
-    best, best_score = None, -1e9
+    """A short, punchy line the streamer actually says — or None if nothing is hook-worthy.
+
+    Must be 2–7 words, not start/end on filler ("and", "so"…), and sound like a reaction
+    (an exclamation/question or a hype word). Lines near the big moment win.
+    """
+    best, best_score = None, 1.0                     # threshold: weak lines are rejected
     for s in segments:
         if s["end"] <= start or s["start"] >= end:
             continue
-        words = re.sub(r"[^\w\s'?!.,]", "", s["text"]).split()
-        if len(words) < 2:
+        raw = s["text"].strip()
+        words = re.sub(r"[^\w\s'?!]", " ", raw).split()
+        while words and words[0].lower() in FILLER:
+            words = words[1:]
+        while words and words[-1].lower().strip("?!") in FILLER:
+            words = words[:-1]
+        if not 2 <= len(words) <= 7:
             continue
-        text = " ".join(words[:7]).rstrip(",.")
+        text = " ".join(words)
         sc = 0.0
-        sc += 2 if re.search(r"[!?]", s["text"]) else 0
-        sc -= abs(len(words) - 5) * 0.4
+        sc += 2.0 if re.search(r"[!?]", raw) else 0
+        sc += 1.5 if HYPE.search(text) else 0
+        sc -= abs(len(words) - 4) * 0.3
         if around is not None:
-            sc -= abs((s["start"] + s["end"]) / 2 - (start + around)) / 4
+            sc -= abs((s["start"] + s["end"]) / 2 - (start + around)) / 6
         if sc > best_score:
             best, best_score = text, sc
     return best.upper() if best else None
