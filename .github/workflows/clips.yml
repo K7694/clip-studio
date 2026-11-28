@@ -12,6 +12,10 @@ on:
     - cron: '47 3 * * *'
   workflow_dispatch:
     inputs:
+      check_only:
+        description: "Only test the YouTube login + analytics (no clips)"
+        type: boolean
+        default: false
       dry_run:
         description: "Preview only (make clips, do not upload)"
         type: boolean
@@ -107,6 +111,7 @@ jobs:
           ONLY_INPUT: ${{ inputs.only }}
         run: |
           args=()
+          [ "${{ inputs.check_only }}" = "true" ] && args+=(--check)
           [ -n "$COUNT" ] && args+=(--count "$COUNT")
           IFS=',' read -ra ONLY <<< "$ONLY_INPUT"
           for s in "${ONLY[@]}"; do s="$(echo "$s" | xargs)"; [ -n "$s" ] && args+=(--only "$s"); done

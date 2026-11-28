@@ -181,6 +181,7 @@ def main() -> int:
     ap.add_argument("--count", type=int, default=None)
     ap.add_argument("--only", action="append", default=[])
     ap.add_argument("--local", help="render a local video file (testing)")
+    ap.add_argument("--check", action="store_true", help="only test the YouTube login, stats and analytics")
     args = ap.parse_args()
     dry = args.dry_run or config.DRY_RUN
 
@@ -196,6 +197,17 @@ def main() -> int:
         return 0
 
     data = state.load()
+    if args.check:
+        from . import upload
+        print(f"YouTube channel: {upload.channel_title()}")
+        ids = [u["youtube"] for u in data["uploads"] if u.get("youtube")]
+        print(f"Stats access: OK ({len(upload.stats(ids))} of {len(ids)} videos readable)")
+        try:
+            upload.retention(ids or ["none"])
+            print("Analytics access: OK (retention data will be used for learning)")
+        except Exception as e:  # noqa: BLE001
+            print(f"Analytics access: NOT available ({str(e)[:120]})")
+        return 0
     if not dry:
         from . import upload
         print(f"YouTube channel: {upload.channel_title()}")
