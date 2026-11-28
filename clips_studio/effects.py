@@ -35,15 +35,57 @@ def _plain(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip(" -|:")
 
 
-def hook_text(title: str, streamer: str) -> str:
-    t = _plain(title).split("|")[0].strip()
-    if t.lower().startswith(streamer.lower() + ":"):
-        t = t[len(streamer) + 1:].strip()
-        if streamer.split()[0].lower() not in t.lower() and len(t) < 28:
-            t = f"{streamer}: {t}"
-    t = t.upper()
-    lines = textwrap.wrap(t, 20)[:3]
+def format_hook(hook: str) -> str:
+    """Upper-case, emoji-free, wrapped to ≤3 short lines for the yellow box."""
+    t = _plain(hook).split("|")[0].strip().upper()
+    n = max(1, -(-len(t) // 20))                      # lines needed at ~20 chars
+    lines = textwrap.wrap(t, max(12, -(-len(t) // n) + 3))[:3]   # balanced, no lonely last word
     return r"\N".join(lines)
+
+
+TEASER_SEC = 1.6
+
+
+def best_moment(src: Path, start: float, end: float) -> float | None:
+    """Loudest reaction (seconds after `start`) — used for the flash-forward opener.
+
+    Only returns a moment that is late enough (≥ 5 s in) to be worth teasing and
+    clearly louder than the rest of the clip (+6 dB over the clip median).
+    """
+    curve = highlights.loudness_curve(src)
+    hop = highlights.HOP
+    a, b = int(start / hop), int(end / hop)
+    seg = curve[a:b]
+    if len(seg) < int(12 / hop):
+        return None
+    smooth = np.convolve(seg, np.ones(3) / 3, mode="same")
+    lo, hi = int(5 / hop), len(seg) - int(2 / hop)
+    if hi <= lo:
+        return None
+    i = lo + int(np.argmax(smooth[lo:hi]))
+    if smooth[i] < float(np.median(seg)) + 6:
+        return None
+    return round(i * hop, 2)
+
+
+def pick_quote(segments: list[dict], start: float, end: float, around: float | None) -> str | None:
+    """Short, punchy line the streamer says (near the big moment if we know it)."""
+    best, best_score = None, -1e9
+    for s in segments:
+        if s["end"] <= start or s["start"] >= end:
+            continue
+        words = re.sub(r"[^\w\s'?!.,]", "", s["text"]).split()
+        if len(words) < 2:
+            continue
+        text = " ".join(words[:7]).rstrip(",.")
+        sc = 0.0
+        sc += 2 if re.search(r"[!?]", s["text"]) else 0
+        sc -= abs(len(words) - 5) * 0.4
+        if around is not None:
+            sc -= abs((s["start"] + s["end"]) / 2 - (start + around)) / 4
+        if sc > best_score:
+            best, best_score = text, sc
+    return best.upper() if best else None
 
 
 def punch_points(src: Path, start: float, end: float, k: int = 2) -> list[float]:
@@ -68,7 +110,7 @@ def punch_points(src: Path, start: float, end: float, k: int = 2) -> list[float]
     return sorted(pts)
 
 
-def post_filter(points: list[float], dur: float) -> str:
+def post_filter(points: list[float], dur: float, flash_at: float | None = None) -> str:
     """ffmpeg chain applied to the finished 1080x1920 frame: punch zooms + progress bar."""
     OW, OH = config.OUT_W, config.OUT_H
     chain = []
@@ -82,6 +124,9 @@ def post_filter(points: list[float], dur: float) -> str:
         z = f"(1+{bumps})"
         chain.append(f"scale=w='2*trunc({OW // 2}*{z})':h='2*trunc({OH // 2}*{z})':eval=frame:flags=bicubic")
         chain.append(f"crop={OW}:{OH}")
+    if flash_at:
+        # quick white flash on the cut from the flash-forward back to the start
+        chain.append(f"drawbox=x=0:y=0:w=iw:h=ih:color=white@0.55:t=fill:enable='between(t,{flash_at:.2f},{flash_at + 0.09:.2f})'")
     chain.append(f"drawbox=x=0:y={OH - 14}:w='iw*t/{dur:.3f}':h=14:color=0xFFDD00@0.95:t=fill")
     return ",".join(chain)
 

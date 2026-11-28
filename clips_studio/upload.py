@@ -7,20 +7,71 @@ from pathlib import Path
 from . import config
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload",
-          "https://www.googleapis.com/auth/youtube.readonly"]
+          "https://www.googleapis.com/auth/youtube.readonly",
+          "https://www.googleapis.com/auth/yt-analytics.readonly"]   # optional: retention for learning
 IST = timezone(timedelta(hours=5, minutes=30))
 
 
-def _client():
+_CREDS = None
+
+
+def _creds():
+    global _CREDS
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
-    from googleapiclient.discovery import build
 
-    creds = Credentials.from_authorized_user_file(str(config.YOUTUBE_TOKEN_FILE))
-    if not creds.valid and creds.refresh_token:
-        creds.refresh(Request())
-        config.YOUTUBE_TOKEN_FILE.write_text(creds.to_json())
-    return build("youtube", "v3", credentials=creds, cache_discovery=False)
+    if _CREDS is None:
+        _CREDS = Credentials.from_authorized_user_file(str(config.YOUTUBE_TOKEN_FILE))
+    if not _CREDS.valid and _CREDS.refresh_token:
+        _CREDS.refresh(Request())
+    return _CREDS
+
+
+def _client(api: str = "youtube", version: str = "v3"):
+    from googleapiclient.discovery import build
+    return build(api, version, credentials=_creds(), cache_discovery=False)
+
+
+def stats(ids: list[str]) -> dict:
+    """views / likes / comments / privacy for up to hundreds of videos (1 quota unit per 50)."""
+    yt, out = _client(), {}
+    for i in range(0, len(ids), 50):
+        r = yt.videos().list(part="statistics,status", id=",".join(ids[i:i + 50])).execute()
+        for it in r.get("items", []):
+            st = it.get("statistics", {})
+            out[it["id"]] = {"views": int(st.get("viewCount", 0)), "likes": int(st.get("likeCount", 0)),
+                             "comments": int(st.get("commentCount", 0)),
+                             "privacy": it.get("status", {}).get("privacyStatus")}
+    return out
+
+
+def retention(ids: list[str]) -> dict:
+    """Average % watched per video. Needs the yt-analytics.readonly scope; raises without it."""
+    ya = _client("youtubeAnalytics", "v2")
+    out = {}
+    end = datetime.now(timezone.utc).date().isoformat()
+    for i in range(0, len(ids), 40):
+        r = ya.reports().query(ids="channel==MINE", startDate="2026-01-01", endDate=end,
+                               metrics="views,averageViewPercentage,averageViewDuration",
+                               dimensions="video", filters="video==" + ",".join(ids[i:i + 40]),
+                               maxResults=200).execute()
+        for row in r.get("rows", []):
+            out[row[0]] = {"avg_pct": float(row[2]), "avg_sec": float(row[3])}
+    return out
+
+
+def verify(video_id: str) -> str:
+    """After upload: is it really scheduled? Returns a short human status."""
+    items = _client().videos().list(part="status", id=video_id).execute().get("items", [])
+    if not items:
+        return "⚠ not found right after upload (YouTube may still be processing)"
+    st = items[0]["status"]
+    if st.get("uploadStatus") in ("rejected", "failed"):
+        return f"⚠ {st.get('uploadStatus')}: {st.get('rejectionReason') or st.get('failureReason')}"
+    if st.get("privacyStatus") == "private" and not st.get("publishAt"):
+        return ("⚠ uploaded but LOCKED PRIVATE — Google is holding uploads from this Cloud project "
+                "until it passes the YouTube API audit")
+    return f"✓ scheduled ({st.get('privacyStatus')} until {st.get('publishAt')})"
 
 
 def channel_title() -> str:

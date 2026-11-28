@@ -7,6 +7,9 @@ on:
     # (hours, measured in you-shorts) does not change when they go live.
     # 00:47 UTC = 06:17 IST nominal.
     - cron: '47 0 * * *'
+    # Safety net 3 h later: if the first run failed, this one fills the day.
+    # If the first run worked, it sees today's Shorts are scheduled and exits.
+    - cron: '47 3 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -144,7 +147,7 @@ jobs:
         run: |
           git config user.name "clips-studio bot"
           git config user.email "clips-studio-bot@users.noreply.github.com"
-          git add state/ 2>/dev/null || true
+          git add state/ LEARNING.md 2>/dev/null || true
           git diff --staged --quiet && { echo "No state changes."; exit 0; }
           git commit -m "auto: update state [skip ci]"
           for i in 1 2 3; do

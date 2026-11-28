@@ -15,7 +15,20 @@ Separate from `you-shorts` — different repo, different channel, different Goog
 * **YouTube** (supported, currently off — YouTube blocks cloud downloads without cookies): the audio of recent streams is scanned for the biggest sudden loudness spikes (screams, laughs, reactions). Only ~1 minute of video is downloaded.
 * Cuts snap to sentence boundaries; nothing is ever posted twice (`state/used.json`).
 
-New channel warm-up: 2 posts/day in week 1, 3 in week 2, 4 in week 3, then 5 (automatic).
+**3 Shorts a day**, published at 22:30 / 01:30 / 06:30 IST (US peak hours). A second run 3 h after the
+daily one fills in if the first failed; nothing is ever posted twice.
+
+## What makes each Short
+* **Best candidate wins:** the top 3 viewer clips per streamer are scored on reaction energy, views and length.
+* **Flash-forward opener:** the loudest reaction plays for 1.6 s first, a white flash, then the clip from the start.
+* **Hook headline** (4 styles: *wait for it*, the streamer's own line, viewer title, reaction line),
+  zoom-ins on reactions, word-by-word captions, @tag, progress bar, follow/comment outro.
+* Optional secret `GEMINI_API_KEY`: Gemini writes the hook + title in the chosen style from the transcript.
+
+## Learning module (`clips_studio/learn.py`)
+Every run pulls views/likes/comments (and retention, if the Analytics scope is granted) for recent Shorts,
+scores each one at the same age, and steers the next picks — streamers, hook style, flash-forward on/off —
+while still exploring 15 % of the time. The reasoning is in **[LEARNING.md](LEARNING.md)**, rewritten every run.
 
 Edit streamers, posts per day and publish times in `clips_studio/config.py`.
 

@@ -7,10 +7,22 @@ from pathlib import Path
 from . import config
 
 
-def render(src: Path, start: float, end: float, graph: str, ass: Path | None, out: Path,
+def render(src: Path, segments: list[tuple[float, float]], graph: str, ass: Path | None, out: Path,
            post: str | None = None) -> Path:
+    """Cut `segments` (source seconds) back-to-back, reframe, add effects + captions, encode.
+
+    One segment = plain clip; two = flash-forward teaser followed by the clip.
+    """
     out.parent.mkdir(parents=True, exist_ok=True)
-    vchain, vout = graph, "[v]"
+    n = len(segments)
+    pre = [f"[0:v]split={n}" + "".join(f"[sv{i}]" for i in range(n)),
+           f"[0:a]asplit={n}" + "".join(f"[sa{i}]" for i in range(n))]
+    for i, (a, b) in enumerate(segments):
+        pre.append(f"[sv{i}]trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS[v{i}]")
+        pre.append(f"[sa{i}]atrim=start={a:.3f}:end={b:.3f},asetpts=PTS-STARTPTS[a{i}]")
+    pre.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[cv][ca]")
+    vchain = ";".join(pre) + ";" + graph.replace("[0:v]", "[cv]")
+    vout = "[v]"
     if post:
         vchain += f";{vout}{post}[vp]"
         vout = "[vp]"
@@ -18,16 +30,15 @@ def render(src: Path, start: float, end: float, graph: str, ass: Path | None, ou
         a = str(ass).replace("\\", "/").replace(":", r"\:").replace("'", r"\'")
         vchain += f";{vout}ass='{a}'[vo]"
         vout = "[vo]"
+    vchain += ";[ca]loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[aout]"
     cmd = [
-        "ffmpeg", "-y", "-v", "error",
-        "-ss", f"{start:.3f}", "-t", f"{end - start:.3f}", "-i", str(src),
+        "ffmpeg", "-y", "-v", "error", "-i", str(src),
         "-filter_complex", vchain,
-        "-map", vout, "-map", "0:a:0?",
-        "-af", "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
+        "-map", vout, "-map", "[aout]",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
         "-profile:v", "high", "-movflags", "+faststart",
         "-c:a", "aac", "-b:a", "160k",
-        "-shortest", str(out),
+        str(out),
     ]
     subprocess.run(cmd, check=True)
     return out

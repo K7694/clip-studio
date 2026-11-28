@@ -28,10 +28,10 @@ STREAMERS = [
     {"name": "Stable Ronaldo", "kind": "twitch", "login": "stableronaldo", "region": "intl"},
 ]
 
-POSTS_PER_DAY = int(os.getenv("POSTS_PER_DAY", "5"))
+POSTS_PER_DAY = int(os.getenv("POSTS_PER_DAY", "3"))
 # Warm-up for a brand-new channel: (days since first upload, posts/day).
 # Ramps 2 -> 3 -> 4 -> POSTS_PER_DAY so the channel never looks like a spam burst.
-WARMUP = [(7, 2), (14, 3), (21, 4)]
+WARMUP = []                       # owner chose a flat 3/day from the start
 CLIP_RANGES = ["7d", "30d"]       # twitch clip windows, tried in order (quiet streamers fall back to 30d)
 YT_RECENT_VIDEOS = 4              # how many recent uploads to consider per YouTube source
 YT_MIN_VIDEO_SEC = 8 * 60         # skip shorts/trailers
@@ -52,7 +52,10 @@ CAPTION_WORDS_PER_LINE = 3
 # ── Upload / schedule ──────────────────────────────────────────────────
 # Videos are uploaded once a day and scheduled with publishAt, so GitHub's
 # cron delays (hours, as seen in you-shorts) don't move the posting times.
-PUBLISH_SLOTS_IST = ["12:30", "15:30", "18:30", "20:30", "22:30"]
+# These streamers' audience is mostly US-based, so slots hit US peak Shorts hours:
+#   22:30 IST = 12:00 ET (lunch) · 01:30 IST = 15:00 ET (after school) · 06:30 IST = 20:00 ET (prime time)
+# The learning report compares slots; change them here if it shows a better time.
+PUBLISH_SLOTS_IST = ["01:30", "06:30", "22:30"]
 YOUTUBE_CATEGORY = "20"           # Gaming
 YOUTUBE_TOKEN_FILE = ROOT / "youtube_token.json"
 # Preview mode = full pipeline, no upload. On automatically until the token exists.

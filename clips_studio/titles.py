@@ -1,4 +1,9 @@
-"""Title / description / tags. Free by default; uses Gemini if GEMINI_API_KEY is set."""
+"""Packaging: on-screen hook + title + description + tags.
+
+Four hook styles (chosen by the learning module): wait / quote / viewer / reaction.
+Free templates by default; if the GEMINI_API_KEY secret is set, Gemini writes the hook
+and title in the chosen style from what is actually said in the clip.
+"""
 from __future__ import annotations
 
 import json
@@ -12,10 +17,6 @@ GAMES = {
     "minecraft": "Minecraft", "bgmi": "BGMI", "pubg": "PUBG", "free fire": "Free Fire",
     "valorant": "Valorant", "fortnite": "Fortnite", "cod": "COD", "warzone": "Warzone",
 }
-HOOKS = [
-    "Couldn't Believe This 😳", "Lost It 😂", "Did NOT Expect This 💀", "Went Crazy 🤯",
-    "This Was Insane 🔥", "Chat Went Wild 😂", "Wasn't Ready 😭", "Best Moment Ever 🔥",
-]
 
 
 def detect_game(text: str) -> str | None:
@@ -33,57 +34,104 @@ def _clean_title(t: str) -> str:
     return t
 
 
-def _gemini(streamer: str, source_title: str, transcript: str) -> str | None:
+REACTIONS = [
+    "WASN'T READY FOR THIS", "COULDN'T BELIEVE IT", "LOST IT", "DID NOT SEE THIS COMING",
+    "WENT CRAZY", "NEEDED A MINUTE", "CAN'T STOP LAUGHING", "WAS SPEECHLESS",
+]
+STYLE_BRIEF = {
+    "wait": "The hook is a 'wait for it' tease that promises a payoff, e.g. 'WAIT FOR HIS REACTION'.",
+    "quote": "The hook is the funniest/most shocking short line the streamer actually says in the clip.",
+    "viewer": "The hook is a punchy curiosity headline about what happens, like a viral clip title.",
+    "reaction": "The hook names the streamer and their reaction, e.g. 'KAI COULDN'T BREATHE'.",
+}
+
+
+def _gemini(streamer: str, source_title: str, transcript: str, style: str) -> dict | None:
     key = os.getenv("GEMINI_API_KEY")
     if not key or not transcript.strip():
         return None
     prompt = (
-        "Write ONE YouTube Shorts title (max 70 characters, 1 emoji max, no hashtags, no quotes) "
-        f"for a clip of the streamer {streamer}. Stream title: {source_title!r}. "
-        f"What is said in the clip: {transcript[:1200]!r}. "
-        "Make it curiosity-driven and accurate to the clip. Reply with the title only."
+        f"You write YouTube Shorts packaging for gaming stream clips. Streamer: {streamer}. "
+        f"Clip/stream title: {source_title!r}. What is said in the clip: {transcript[:1500]!r}.\n"
+        f"{STYLE_BRIEF.get(style, '')}\n"
+        "Return JSON only: {\"hook\": \"on-screen hook, max 6 words, no emoji\", "
+        "\"title\": \"YouTube title, max 70 chars, at most 1 emoji, no hashtags, includes the streamer name\"}. "
+        "Be accurate to the clip — never invent events. Curiosity beats description."
     )
-    body = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
+    body = json.dumps({"contents": [{"parts": [{"text": prompt}]}],
+                       "generationConfig": {"responseMimeType": "application/json", "temperature": 0.9}}).encode()
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
     try:
         req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=40) as r:
             data = json.load(r)
-        t = data["candidates"][0]["content"]["parts"][0]["text"].strip().strip('"')
-        return t[:90] if t else None
-    except Exception as e:  # noqa: BLE001 - titles must never break the pipeline
-        print(f"   gemini title failed: {e}")
+        out = json.loads(data["candidates"][0]["content"]["parts"][0]["text"])
+        hook, title = str(out.get("hook", "")).strip(), str(out.get("title", "")).strip().strip('"')
+        if not hook or not title:
+            return None
+        return {"hook": " ".join(hook.split()[:7]), "title": title[:90]}
+    except Exception as e:  # noqa: BLE001 - packaging must never break the pipeline
+        print(f"   gemini packaging failed: {str(e)[:120]}")
         return None
 
 
-def make(streamer: dict, source_title: str, kind: str, transcript: str, credit_url: str) -> dict:
+def _viewer_title(source_title: str) -> str | None:
+    clean = _clean_title(source_title)
+    real_words = [w for w in re.findall(r"[A-Za-z\u0900-\u097F]+", clean) if len(w) >= 3]
+    if 8 <= len(clean) <= 60 and len(real_words) >= 2:
+        return clean
+    return None
+
+
+def _template(streamer: dict, source_title: str, kind: str, style: str, quote: str | None) -> tuple[str, str, str]:
+    """(hook, title, style actually used) without any AI."""
     name = streamer["name"]
-    game = detect_game(source_title)
-    title = _gemini(name, source_title, transcript)
-    if not title:
-        clean = _clean_title(source_title)
-        real_words = [w for w in re.findall(r"[A-Za-z\u0900-\u097F]+", clean) if len(w) >= 3]
-        if kind == "twitch" and 8 <= len(clean) <= 60 and len(real_words) >= 2:
-            title = f"{name}: {clean}"                       # viewer-written clip titles are good hooks
-        else:
-            title = f"{name} {random.choice(HOOKS)}"
-            if game:
-                title = f"{title} | {game}"
+    viewer = _viewer_title(source_title) if kind == "twitch" else None
+    reaction = random.choice(REACTIONS)
+    if style == "quote" and quote:
+        hook = f"“{quote}”"
+    elif style == "viewer" and viewer:
+        hook = viewer
+    elif style == "wait":
+        hook = random.choice(["WAIT FOR IT…", "WAIT FOR HIS REACTION", "WATCH TILL THE END", "KEEP WATCHING…"])
+    else:
+        style = "reaction"
+        hook = f"{name.split()[0]} {reaction}"
+    title = f"{name}: {viewer}" if viewer else f"{name} {reaction.title()} {random.choice(['😳', '😂', '💀', '🔥', '😭'])}"
+    return hook, title, style
+
+
+def make(streamer: dict, source_title: str, kind: str, transcript: str, credit_url: str,
+         style: str = "reaction", quote: str | None = None) -> dict:
+    name = streamer["name"]
+    game = detect_game(source_title + " " + transcript[:300])
+    ai = _gemini(name, source_title, transcript, style)
+    if ai:
+        hook, title, packaging = ai["hook"], ai["title"], "ai"
+    else:
+        hook, title, style = _template(streamer, source_title, kind, style, quote)
+        packaging = "template"
     title = title[:90].rstrip()
     if "#shorts" not in title.lower() and len(title) <= 90:
         title += " #shorts"
 
     channel = (f"https://www.twitch.tv/{streamer['login']}" if streamer["kind"] == "twitch"
                else streamer["url"].rsplit("/", 1)[0])
-    tags = [name, f"{name} clips", "shorts", "gaming", "stream highlights", "funny moments"]
+    tags = [name, f"{name} clips", f"{name} funny moments", "shorts", "gaming", "stream highlights",
+            "funny moments", "twitch clips"]
     if game:
         tags += [game, f"{game} funny moments"]
-    hashtags = " ".join(["#shorts", "#" + re.sub(r"\W", "", name), "#gaming"] + (["#" + re.sub(r"\W", "", game)] if game else []))
+    hashtags = " ".join(["#shorts", "#" + re.sub(r"\W", "", name), "#gaming", "#twitchclips"]
+                        + (["#" + re.sub(r"\W", "", game)] if game else []))
     desc = (
+        f"{hook if packaging == 'ai' else title.replace(' #shorts', '')}\n\n"
         f"🎮 Clip from {name}'s stream.\n"
         f"▶ Original: {credit_url}\n"
         f"👉 Follow {name}: {channel}\n\n"
-        f"All credit goes to {name}. Clipped and captioned for highlights.\n\n"
+        f"💬 Who should we clip next? Tell us in the comments!\n"
+        f"🔔 Subscribe for daily stream highlights.\n\n"
+        f"All credit goes to {name}. Clipped, edited and captioned for highlights.\n\n"
         f"{hashtags}"
     )
-    return {"title": title, "description": desc, "tags": tags[:15]}
+    return {"title": title, "description": desc, "tags": tags[:15], "hook": hook,
+            "hook_style": style, "packaging": packaging}

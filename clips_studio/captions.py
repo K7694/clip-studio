@@ -56,16 +56,20 @@ def _clean(word: str) -> str:
     return word.upper()
 
 
-def write_ass(transcript: dict, clip_start: float, clip_end: float, y: int, path: Path) -> int:
-    """Captions for [clip_start, clip_end] of the transcript, re-timed to start at 0.
+def write_ass(transcript: dict, segments: list[tuple[float, float, float]], y: int, path: Path) -> int:
+    """Captions for one or more source segments [(src_start, src_end, out_offset), ...].
 
+    Words are re-timed into the output timeline (src time - src_start + out_offset), so a
+    flash-forward teaser followed by the main clip gets correct captions for both parts.
     Returns the number of caption events written.
     """
-    words = [dict(w, start=w["start"] - clip_start, end=w["end"] - clip_start)
-             for s in transcript["segments"] for w in s["words"]
-             if w["end"] > clip_start and w["start"] < clip_end]
-    dur = clip_end - clip_start
-
+    all_words = [w for s in transcript["segments"] for w in s["words"]]
+    dur = max(off + (b - a) for a, b, off in segments)
+    seg_words = []
+    for a, b, off in segments:
+        ws = [dict(w, start=max(w["start"], a) - a + off, end=min(w["end"], b) - a + off)
+              for w in all_words if w["end"] > a and w["start"] < b]
+        seg_words.append((ws, off + (b - a)))
     subs = pysubs2.SSAFile()
     subs.info["PlayResX"] = str(config.OUT_W)
     subs.info["PlayResY"] = str(config.OUT_H)
@@ -79,9 +83,14 @@ def write_ass(transcript: dict, clip_start: float, clip_end: float, y: int, path
     subs.styles["Default"] = style
 
     count = 0
-    chunks = _chunks(words)
+    chunks, limits = [], []
+    for ws, seg_end in seg_words:
+        cs = _chunks(ws)
+        chunks += cs
+        limits += [seg_end] * len(cs)
     for ci, chunk in enumerate(chunks):
         nxt = chunks[ci + 1][0]["start"] if ci + 1 < len(chunks) else dur
+        nxt = min(nxt, limits[ci])
         for i, w in enumerate(chunk):
             a = max(0.0, w["start"])
             b = chunk[i + 1]["start"] if i + 1 < len(chunk) else min(w["end"] + 0.25, nxt)
