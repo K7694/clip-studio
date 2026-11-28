@@ -221,9 +221,9 @@ def main() -> int:
         count = args.count
     else:
         target = state.posts_today(data, config.WARMUP, config.POSTS_PER_DAY)
-        already = learn.recent_uploads(data, hours=18)
+        already = learn.scheduled_ahead(data)
         count = max(0, target - already)
-        print(f"Daily target {target}, already scheduled in the last 18 h: {already}")
+        print(f"Daily target {target}, already scheduled and not yet public: {already}")
     print(f"Posts this run: {count}")
     if count == 0:
         learn.write_report(data)

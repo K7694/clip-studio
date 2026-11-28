@@ -159,9 +159,11 @@ def pick_teaser(data: dict, rng: random.Random | None = None) -> bool:
     return s[True] >= s[False]
 
 
-def recent_uploads(data: dict, hours: float = 18) -> int:
-    cutoff = time.time() - hours * 3600
-    return sum(1 for u in data["uploads"] if u.get("made", 0) >= cutoff)
+def scheduled_ahead(data: dict) -> int:
+    """Shorts uploaded but not yet public. The daily run tops this up to the daily target,
+    so a late cron, a retry run or an extra manual run never double-posts or under-posts."""
+    now = time.time()
+    return sum(1 for u in data["uploads"] if u.get("youtube") and _published_ts(u) > now)
 
 
 def length_bucket(sec: float) -> str:
