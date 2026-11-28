@@ -1,10 +1,14 @@
 {
  "used_ids": {
-  "twitch:2854815565": 1795873393.4879153
+  "twitch:2854815565": 1795873393.4879153,
+  "twitch:3249472081": 1795877111.6721368,
+  "twitch:395630095": 1795877114.5640945
  },
  "used_windows": {},
  "last_posted": {
-  "summit1g": 1795873393.4879153
+  "summit1g": 1795873393.4879153,
+  "xQc": 1795877111.6721368,
+  "Kai Cenat": 1795877114.5640945
  },
  "uploads": [
   {
@@ -14,6 +18,36 @@
    "source": "https://www.twitch.tv/summit1g/clip/HyperEnchantingBubbleteaWTRuck-1gWddqvIijy9Qpxg",
    "publish_at": "2026-11-28T20:30:00+05:30",
    "made": 1795873393
+  },
+  {
+   "youtube": "xCkH8yav9mc",
+   "streamer": "xQc",
+   "title": "xQc Reacts to GTA 6 Forced Relationship 😲 #shorts",
+   "hook": "Wait for his reaction",
+   "source": "https://www.twitch.tv/xqc/clip/ResilientDrabGrasshopperWow-fKAbKH4GGUaEC2dl",
+   "publish_at": "2026-11-28T22:30:00+05:30",
+   "made": 1795877111,
+   "hook_style": "wait",
+   "packaging": "ai",
+   "teaser": false,
+   "layout": "facecam",
+   "length": "20-35s",
+   "slot": "22:30"
+  },
+  {
+   "youtube": "ZEJaaA7XItk",
+   "streamer": "Kai Cenat",
+   "title": "Kai Cenat goes insane: 'Oh my god YO WHAT THE F*CK' 😱 #shorts",
+   "hook": "Kai Cenat's wild reaction",
+   "source": "https://www.twitch.tv/kaicenat/clip/MistyFastChickpeaBatChest-1l50Cnz_nbghKxmh",
+   "publish_at": "2026-11-29T01:30:00+05:30",
+   "made": 1795877114,
+   "hook_style": "viewer",
+   "packaging": "ai",
+   "teaser": true,
+   "layout": "facecam",
+   "length": "20-35s",
+   "slot": "01:30"
   }
  ]
 }
