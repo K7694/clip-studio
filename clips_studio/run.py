@@ -201,7 +201,12 @@ def main() -> int:
         from . import upload
         print(f"YouTube channel: {upload.channel_title()}")
         ids = [u["youtube"] for u in data["uploads"] if u.get("youtube")]
-        print(f"Stats access: OK ({len(upload.stats(ids))} of {len(ids)} videos readable)")
+        st = upload.stats(ids)
+        print(f"Stats access: OK ({len(st)} of {len(ids)} videos readable)")
+        for u in data["uploads"]:
+            v = st.get(u.get("youtube"), {})
+            print(f"  {u.get('publish_at', '')[:16]}  {v.get('privacy', '?'):8} {v.get('views', 0):>6} views  "
+                  f"https://youtu.be/{u.get('youtube')}  {u.get('title', '')[:50]}")
         try:
             upload.retention(ids or ["none"])
             print("Analytics access: OK (retention data will be used for learning)")
