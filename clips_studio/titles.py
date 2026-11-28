@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import string
 import re
 import urllib.request
 
@@ -99,7 +100,7 @@ def _template(streamer: dict, source_title: str, kind: str, style: str, quote: s
     else:
         style = "reaction"
         hook = f"{name.split()[0]} {reaction}"
-    title = f"{name}: {viewer}" if viewer else f"{name} {reaction.title()} {random.choice(['😳', '😂', '💀', '🔥', '😭'])}"
+    title = f"{name}: {viewer}" if viewer else f"{name} {string.capwords(reaction.lower())} {random.choice(['😳', '😂', '💀', '🔥', '😭'])}"
     return hook, title, style
 
 
