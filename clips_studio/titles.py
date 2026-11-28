@@ -41,6 +41,8 @@ REACTIONS = [
     "WASN'T READY FOR THIS", "COULDN'T BELIEVE IT", "LOST IT", "DID NOT SEE THIS COMING",
     "WENT CRAZY", "NEEDED A MINUTE", "CAN'T STOP LAUGHING", "WAS SPEECHLESS",
 ]
+# gemini-2.0/2.5-flash were retired (404); "-latest" aliases follow Google's current models.
+GEMINI_MODELS = ["gemini-flash-lite-latest", "gemini-flash-latest"]
 STYLE_BRIEF = {
     "wait": "The hook is a 'wait for it' tease that promises a payoff, e.g. 'WAIT FOR HIS REACTION'.",
     "quote": "The hook is the funniest/most shocking short line the streamer actually says in the clip.",
@@ -63,19 +65,20 @@ def _gemini(streamer: str, source_title: str, transcript: str, style: str) -> di
     )
     body = json.dumps({"contents": [{"parts": [{"text": prompt}]}],
                        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.9}}).encode()
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
-    try:
-        req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=40) as r:
-            data = json.load(r)
-        out = json.loads(data["candidates"][0]["content"]["parts"][0]["text"])
-        hook, title = str(out.get("hook", "")).strip(), str(out.get("title", "")).strip().strip('"')
-        if not hook or not title:
-            return None
-        return {"hook": " ".join(hook.split()[:7]), "title": title[:90]}
-    except Exception as e:  # noqa: BLE001 - packaging must never break the pipeline
-        print(f"   gemini packaging failed: {str(e)[:120]}")
-        return None
+    for model in GEMINI_MODELS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+        try:
+            req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=40) as r:
+                data = json.load(r)
+            out = json.loads(data["candidates"][0]["content"]["parts"][0]["text"])
+            hook, title = str(out.get("hook", "")).strip(), str(out.get("title", "")).strip().strip('"')
+            if hook and title:
+                print(f"   gemini ({model}) wrote the hook + title")
+                return {"hook": " ".join(hook.split()[:7]), "title": title[:90]}
+        except Exception as e:  # noqa: BLE001 - packaging must never break the pipeline
+            print(f"   gemini {model} failed: {str(e)[:100]}")
+    return None
 
 
 def _viewer_title(source_title: str) -> str | None:
